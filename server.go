@@ -3,14 +3,8 @@ package main
 import (
 	"fmt"
 	"net"
+	"strings"
 )
-
-var dict = map[string]string{
-	"red":    "красный",
-	"green":  "зеленый",
-	"blue":   "синий",
-	"yellow": "желтый",
-}
 
 func main() {
 	listener, err := net.Listen("tcp", ":4545")
@@ -21,6 +15,7 @@ func main() {
 	}
 	defer listener.Close()
 	fmt.Println("Server is listening...")
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -38,9 +33,9 @@ func main() {
 		}
 		ps := string(passw[0:n])
 
-		if ps == "123456" { // Задаем наш пароль, для подключения к серверу
+		if ps == "123456" { // если данные не найдены в словаре
 			conn.Write([]byte("Вход разрешен"))
-			go handleConnection(conn)
+			go handleConnection(conn) // запускаем горутину для обработки запроса
 		} else {
 			conn.Write([]byte("Введен не верный пароль"))
 			conn.Close()
@@ -50,8 +45,7 @@ func main() {
 
 // обработка подключения
 func handleConnection(conn net.Conn) {
-
-	// на основании полученных данных получаем из словаря перевод
+	var c, p string
 
 	defer conn.Close()
 	for {
@@ -60,17 +54,26 @@ func handleConnection(conn net.Conn) {
 		n, err := conn.Read(input)
 		if n == 0 || err != nil {
 			fmt.Println("Read error:", err)
+			input = nil
 			break
 		}
 		source := string(input[0:n])
-		// на основании полученных данных получаем из словаря перевод
-		target, ok := dict[source]
-		if ok == false { // если данные не найдены в словаре
-			target = "undefined"
+		// !!! Разбираем ответ сервера на команды (Команда  -  Путь)
+		text := strings.Split(source, " ")
+		if len(text) > 1 {
+			c = text[0]
+			p = text[1]
+		} else {
+			c = text[0]
+			p = ""
 		}
-		// выводим на консоль сервера диагностическую информацию
-		fmt.Println(source, "-", target)
-		// отправляем данные клиенту
-		conn.Write([]byte(target))
+		fmt.Println(c, p)
+		otv := (Dir(string(c), string(p)))
+		if len(otv) != 0 {
+			conn.Write([]byte(otv))
+		} else {
+			otv = "Успешно"
+			conn.Write([]byte(otv))
+		}
 	}
 }
