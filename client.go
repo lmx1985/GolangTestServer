@@ -1,7 +1,7 @@
-
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"os"
@@ -18,7 +18,7 @@ func main() {
 	// Эта часть отвечает за верификацию пароля (если пароль не верный, то програма отрубается)
 
 	fmt.Println("Server:")
-	buff := make([]byte, 1024)
+	buff := make([]byte, 4096)
 	n, err := conn.Read(buff)
 	if err != nil {
 		return
@@ -51,10 +51,11 @@ func main() {
 	for {
 		var source string
 		fmt.Print(">>> ")
-		_, err := fmt.Scanln(&source)
-		if err != nil {
-			fmt.Println("Некорректный ввод", err)
-			continue
+
+		sc := bufio.NewScanner(os.Stdin)
+		for sc.Scan() {
+			source = sc.Text()
+			break
 		}
 		// отправляем сообщение серверу
 		if n, err := conn.Write([]byte(source)); n == 0 || err != nil {
@@ -62,14 +63,18 @@ func main() {
 			return
 		}
 		// получем ответ
-		fmt.Print("Ответ:")
-		buff := make([]byte, 1024)
+		fmt.Println("Ответ:")
+		buff := make([]byte, 4096)
 		n, err := conn.Read(buff)
 		if err != nil {
 			break
 		}
 		fmt.Print(string(buff[0:n]))
+		if string(buff[0:n]) == "exit" {
+			break
+		}
+		buff = nil
+		n = 0
 		fmt.Println()
 	}
 }
-
